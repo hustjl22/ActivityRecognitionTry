@@ -1,6 +1,10 @@
 package com.example.jennahuston.activityrecognitiontry;
 
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -10,6 +14,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 public class MainActivity extends AppCompatActivity {
+
+    BoundedService myService;
+    BoundedService.MyBinder binder_;
+    Boolean connected = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +34,10 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
             }
         });
+
+        //Bind the service
+        Intent myIntent2 = new Intent(this, BoundedService.class);
+        bindService(myIntent2, mConnection, BIND_AUTO_CREATE);
     }
 
     @Override
@@ -34,6 +46,20 @@ public class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            binder_ = (BoundedService.MyBinder) service;
+            myService = binder_.getService();
+            connected = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

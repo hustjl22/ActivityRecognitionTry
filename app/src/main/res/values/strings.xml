@@ -4,4 +4,5 @@
     <string name="curActivityLabel">Current Activity:</string>
     <string name="curActivityPlaceholder">none</string>
     <string name="contentHeader">Activity History</string>
+    <string name="timeRangePlaceholder">00:00:00</string>
 </resources>

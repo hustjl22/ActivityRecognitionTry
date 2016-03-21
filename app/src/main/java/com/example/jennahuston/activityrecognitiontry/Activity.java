@@ -70,8 +70,18 @@ public class Activity implements Comparator<Activity>, Comparable<Activity> {
         return s;
     }
 
+    public String getTimeRangeStringLong() {
+        String s;
+        if (!isFinished()) {
+            s = String.format("%s", getStartStringLong());
+        } else {
+            s = String.format("%s - %s", getStartStringLong(), getEndStringShort());
+        }
+        return s;
+    }
+
     public String toString() {
-        return String.format("%s: %s", getTimeRangeStringShort(), getTypeString());
+        return String.format("%s: %s", getTimeRangeStringLong(), getTypeString());
     }
 
     @Override

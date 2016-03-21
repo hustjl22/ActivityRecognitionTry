@@ -40,11 +40,19 @@
         android:orientation="vertical"
         android:paddingTop="16dp">
 
+        <Button
+            android:id="@+id/saveActivityHistoryButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="@string/exportButtonText"/>
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/contentHeader"
-            android:textSize="18dp"/>
+            android:paddingTop="20dp"
+            android:textSize="18dp" />
 
         <ListView
             android:layout_width="match_parent"

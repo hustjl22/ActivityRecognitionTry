@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -12,6 +13,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -26,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -52,6 +56,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Intent myIntent2 = new Intent(this, BoundedService.class);
         bindService(myIntent2, mConnection, BIND_AUTO_CREATE);
 
+        final Handler handler = new Handler();
+        Timer timer = new Timer();
+        TimerTask doAsynchronousTask = new TimerTask() {
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    @SuppressWarnings("unchecked")
+                    public void run() {
+                        try {
+                            setActivityList();
+                        }
+                        catch (Exception e) {
+                            System.out.println("Error getting activities");
+                            System.out.println(e.getStackTrace());
+                        }
+                    }
+                });
+            }
+        };
+        timer.schedule(doAsynchronousTask, 120000, 120000);
+
         saveActivityHistoryButton = (Button) findViewById(R.id.saveActivityHistoryButton);
         saveActivityHistoryButton.setOnClickListener(this);
 
@@ -77,13 +102,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Activity a3 = new Activity(Activity.Type.RUNNING, d3, d4);
         Activity a4 = new Activity(Activity.Type.SITTING, d4, d5);
         Activity a5 = new Activity(Activity.Type.SITTING, d5, d6);
+        /*
         activityHistoryList.add(a1);
         activityHistoryList.add(a2);
         activityHistoryList.add(a3);
         activityHistoryList.add(a4);
         activityHistoryList.add(a5);
+        */
+        //Collections.sort(activityHistoryList);
+        //adapter.addAll(activityHistoryList);
+    }
+
+    public void setActivityList(){
+        activityHistoryList = myService.getActivities();
+        Toast.makeText(this, "Changing activity list", Toast.LENGTH_LONG);
         Collections.sort(activityHistoryList);
-        adapter.addAll(activityHistoryList);
+        adapter.notifyDataSetChanged();
     }
 
     @Override

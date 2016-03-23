@@ -9,21 +9,28 @@ import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedList;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class BoundedService extends Service implements SensorEventListener {
 
-    SensorManager sensorManager;
-    Sensor accelerometer;
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
     private final static int DELAY=100;
     private Handler myHandler = new Handler();
     private double rms;
 
-    LinkedList<Double> listX;
-    LinkedList<Double> listY;
-    LinkedList<Double> listZ;
+    private LinkedList<Double> listAccX;
+    private LinkedList<Double> listAccY;
+    private LinkedList<Double> listAccZ;
+
+    private ArrayList<Activity> activities;
 
     @Override
     public void onDestroy() {
@@ -42,9 +49,33 @@ public class BoundedService extends Service implements SensorEventListener {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL, DELAY);
 
-        listX = new LinkedList<Double>();
-        listY = new LinkedList<Double>();
-        listZ = new LinkedList<Double>();
+        listAccX = new LinkedList<Double>();
+        listAccY = new LinkedList<Double>();
+        listAccZ = new LinkedList<Double>();
+
+        activities = new ArrayList<>();
+        activities.add(new Activity());
+
+        final Handler handler = new Handler();
+        Timer timer = new Timer();
+        TimerTask doAsynchronousTask = new TimerTask() {
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    @SuppressWarnings("unchecked")
+                    public void run() {
+                        try {
+                            determineActivity();
+                        }
+                        catch (Exception e) {
+                            System.out.println("Error getting activity");
+                            System.out.println(e.getStackTrace());
+                        }
+                    }
+                });
+            }
+        };
+        timer.schedule(doAsynchronousTask, 120000, 120000);
     }
 
     @Override
@@ -73,9 +104,53 @@ public class BoundedService extends Service implements SensorEventListener {
 
     }
 
-    public synchronized double getRms() {
+    public synchronized ArrayList<Activity> getActivities() {
 
-        return rms;
+        return activities;
+    }
+
+    public synchronized void determineActivity() {
+        Activity currentActivity = activities.get(activities.size() - 1);
+        currentActivity.setEnd(new Date());
+
+        double averageAX = 0;
+        double averageAY = 0;
+        double averageAZ = 0;
+
+        for(int i = 0; i < listAccX.size(); i++) {
+            averageAX += listAccX.get(i);
+            averageAY += listAccY.get(i);
+            averageAZ += listAccZ.get(i);
+        }
+
+        averageAX /= listAccX.size();
+        averageAY /= listAccX.size();
+        averageAZ /= listAccX.size();
+
+        double angle = Math.atan2(averageAY, averageAZ)/(Math.PI/180);
+
+
+        if(angle < 10) {
+            currentActivity.setType(Activity.Type.SLEEPING);
+            Toast.makeText(this, "Sleeping " + angle, Toast.LENGTH_LONG).show();
+        }
+        else {
+            if(averageAX > -.8 || averageAZ < .8) {
+                currentActivity.setType(Activity.Type.SITTING);
+                Toast.makeText(this, "sitting " + angle + " " + averageAX, Toast.LENGTH_LONG);
+            }
+            else {
+                currentActivity.setType(Activity.Type.RUNNING);
+                Toast.makeText(this, "running " + angle + " " + averageAX, Toast.LENGTH_LONG);
+            }
+        }
+
+        listAccX = new LinkedList<>();
+        listAccY = new LinkedList<>();
+        listAccZ = new LinkedList<>();
+
+
+        activities.add(new Activity());
     }
 
     private class AcclWork implements Runnable {
@@ -92,33 +167,14 @@ public class BoundedService extends Service implements SensorEventListener {
             double accly = event_.values[1];
             double acclz = event_.values[2];
 
-            listX.add((Double) acclx);
-            listY.add((Double) accly);
-            listZ.add((Double) acclz);
-
-            if(listX.size() > 100) {
-                listX.removeFirst();
-                listY.removeFirst();
-                listZ.removeFirst();
-
-                double sumX = 0;
-                double sumY = 0;
-                double sumZ = 0;
-                for(int i = 0; i < listX.size(); i++) {
-                    sumX += listX.get(i);
-                    sumY += listY.get(i);
-                    sumZ += listZ.get(i);
-                }
-
-                sumX /= 100;
-                sumY /= 100;
-                sumZ /= 100;
-
-                rms = Math.sqrt((sumX * sumX + sumY * sumY + sumZ * sumZ)/3);
-            }
+            listAccX.add((Double) acclx);
+            listAccY.add((Double) accly);
+            listAccZ.add((Double) acclz);
 
         }
     }
+
+
 
     public class MyBinder extends Binder {
 

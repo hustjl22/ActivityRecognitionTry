@@ -75,7 +75,7 @@ public class Activity implements Comparator<Activity>, Comparable<Activity> {
         if (!isFinished()) {
             s = String.format("%s", getStartStringLong());
         } else {
-            s = String.format("%s - %s", getStartStringLong(), getEndStringShort());
+            s = String.format("%s - %s", getStartStringLong(), getEndStringLong());
         }
         return s;
     }

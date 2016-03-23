@@ -22,6 +22,7 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -164,26 +165,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
     public void writeHistoryToFile() {
-        if (!isExternalStorageWritable()) {
-            String msg = "External storage is not writable!";
-            Log.e(TAG, msg);
-            Toast.makeText(this, msg, Toast.LENGTH_LONG);
-        }
-
-        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS + "/activityRecognition");
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-        File file = new File(dir, new SimpleDateFormat("yyyyMMddhhmmss").format(new Date()) + ".txt");
+        File path = this.getExternalFilesDir(null);
+        File file = new File(path, new SimpleDateFormat("yyyyMMddhhmmss").format(new Date()) + ".txt");
 
         Log.d(TAG, "Attempting to write to " + file.getAbsolutePath());
 
@@ -192,14 +176,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             PrintWriter writer = new PrintWriter(f);
 
             for (Activity a : activityHistoryList) {
-                writer.write(a.toString());
+                writer.write(a.toString() + "\n");
             }
+            writer.close();
+            f.close();
 
-            Toast.makeText(this, "History saved in " + dir.getAbsolutePath(), Toast.LENGTH_LONG);
-            Log.d(TAG, "Successfully wrote histry to " + file.getAbsolutePath());
+            Toast.makeText(this, "History saved in " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
+            Log.d(TAG, "Successfully wrote history to " + file.getAbsolutePath());
         } catch (FileNotFoundException e) {
             Log.e(TAG, e.getMessage());
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG);
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 }

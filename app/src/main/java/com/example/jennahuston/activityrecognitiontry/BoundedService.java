@@ -15,12 +15,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class BoundedService extends Service implements SensorEventListener {
 
     private SensorManager sensorManager;
     private Sensor accelerometer;
-    private Sensor gyroscope;
     private final static int DELAY=100;
     private Handler myHandler = new Handler();
     private double rms;
@@ -28,10 +29,6 @@ public class BoundedService extends Service implements SensorEventListener {
     private LinkedList<Double> listAccX;
     private LinkedList<Double> listAccY;
     private LinkedList<Double> listAccZ;
-
-    private LinkedList<Double> listGyroX;
-    private LinkedList<Double> listGyroY;
-    private LinkedList<Double> listGyroZ;
 
     private ArrayList<Activity> activities;
 
@@ -50,20 +47,35 @@ public class BoundedService extends Service implements SensorEventListener {
         super.onCreate();
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL, DELAY);
-        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL, DELAY);
 
         listAccX = new LinkedList<Double>();
         listAccY = new LinkedList<Double>();
         listAccZ = new LinkedList<Double>();
 
-        listGyroX = new LinkedList<Double>();
-        listGyroY = new LinkedList<Double>();
-        listGyroZ = new LinkedList<Double>();
-
         activities = new ArrayList<>();
         activities.add(new Activity());
+
+        final Handler handler = new Handler();
+        Timer timer = new Timer();
+        TimerTask doAsynchronousTask = new TimerTask() {
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    @SuppressWarnings("unchecked")
+                    public void run() {
+                        try {
+                            determineActivity();
+                        }
+                        catch (Exception e) {
+                            System.out.println("Error getting activity");
+                            System.out.println(e.getStackTrace());
+                        }
+                    }
+                });
+            }
+        };
+        timer.schedule(doAsynchronousTask, 120000, 120000);
     }
 
     @Override
@@ -73,9 +85,6 @@ public class BoundedService extends Service implements SensorEventListener {
         switch (mySensor.getType()) {
             case Sensor.TYPE_ACCELEROMETER:
                 myHandler.post(new AcclWork(event));
-                break;
-            case Sensor.TYPE_GYROSCOPE:
-                myHandler.post(new GyroWork(event));
                 break;
         }
     }
@@ -108,26 +117,15 @@ public class BoundedService extends Service implements SensorEventListener {
         double averageAY = 0;
         double averageAZ = 0;
 
-        double averageGX = 0;
-        double averageGY = 0;
-        double averageGZ = 0;
         for(int i = 0; i < listAccX.size(); i++) {
             averageAX += listAccX.get(i);
             averageAY += listAccY.get(i);
             averageAZ += listAccZ.get(i);
-
-            //averageGX += listGyroX.get(i);
-            //averageGY += listGyroY.get(i);
-            //averageGZ += listGyroZ.get(i);
         }
 
         averageAX /= listAccX.size();
         averageAY /= listAccX.size();
         averageAZ /= listAccX.size();
-
-        averageGX /= listAccX.size();
-        averageGY /= listAccX.size();
-        averageGZ /= listAccX.size();
 
         double angle = Math.atan2(averageAY, averageAZ)/(Math.PI/180);
 
@@ -137,13 +135,13 @@ public class BoundedService extends Service implements SensorEventListener {
             Toast.makeText(this, "Sleeping " + angle, Toast.LENGTH_LONG).show();
         }
         else {
-            if(averageAZ > 3 || averageAZ < -3) {
+            if(averageAX > -.8 || averageAZ < .8) {
                 currentActivity.setType(Activity.Type.SITTING);
-                Toast.makeText(this, "running " + angle + " " + averageAZ, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "sitting " + angle + " " + averageAX, Toast.LENGTH_LONG);
             }
             else {
                 currentActivity.setType(Activity.Type.RUNNING);
-                Toast.makeText(this, "sitting " + angle + " " + averageAZ, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "running " + angle + " " + averageAX, Toast.LENGTH_LONG);
             }
         }
 
@@ -151,9 +149,7 @@ public class BoundedService extends Service implements SensorEventListener {
         listAccY = new LinkedList<>();
         listAccZ = new LinkedList<>();
 
-        listGyroX = new LinkedList<>();
-        listGyroY = new LinkedList<>();
-        listGyroZ = new LinkedList<>();
+
         activities.add(new Activity());
     }
 
@@ -178,26 +174,7 @@ public class BoundedService extends Service implements SensorEventListener {
         }
     }
 
-    private class GyroWork implements Runnable {
-        private SensorEvent event_;
 
-        public GyroWork(SensorEvent event) {
-            event_ = event;
-        }
-
-        //Add code to get and process data for activity recognition
-        @Override
-        public void run() {
-            double gyrox = event_.values[0];
-            double gyroy = event_.values[1];
-            double gyroz = event_.values[2];
-
-            listGyroX.add((Double) gyrox);
-            listGyroY.add((Double) gyroy);
-            listGyroZ.add((Double) gyroz);
-
-        }
-    }
 
     public class MyBinder extends Binder {
 

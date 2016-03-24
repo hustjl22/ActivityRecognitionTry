@@ -65,6 +65,17 @@ public class MainActivity extends AppCompatActivity {
         activityHistoryListView.setAdapter(adapter);
     }
 
+    // Unbind ourselves from the service connection if this app is destroyed so we
+    // don't get the serviceconnection was leaked error
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        if (connected) {
+            unbindService(mConnection);
+        }
+    }
+
     public void setActivityList(){
         if (connected) {
             activityHistoryList.clear();

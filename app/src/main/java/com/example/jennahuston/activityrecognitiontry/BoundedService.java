@@ -30,6 +30,7 @@ public class BoundedService extends Service implements SensorEventListener {
     private LinkedList<Double> listAccY;
     private LinkedList<Double> listAccZ;
 
+    private Activity currentActivity;
     private ArrayList<Activity> activities;
 
     @Override
@@ -54,7 +55,7 @@ public class BoundedService extends Service implements SensorEventListener {
         listAccZ = new LinkedList<Double>();
 
         activities = new ArrayList<>();
-        activities.add(new Activity());
+        currentActivity = new Activity();
 
         final Handler handler = new Handler();
         Timer timer = new Timer();
@@ -110,7 +111,6 @@ public class BoundedService extends Service implements SensorEventListener {
     }
 
     public synchronized void determineActivity() {
-        Activity currentActivity = activities.get(activities.size() - 1);
         currentActivity.setEnd(new Date());
 
         double averageAX = 0;
@@ -150,7 +150,8 @@ public class BoundedService extends Service implements SensorEventListener {
         listAccZ = new LinkedList<>();
 
 
-        activities.add(new Activity());
+        activities.add(currentActivity);
+        currentActivity = new Activity();
     }
 
     private class AcclWork implements Runnable {

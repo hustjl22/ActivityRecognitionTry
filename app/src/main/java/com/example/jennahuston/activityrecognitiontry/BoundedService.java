@@ -9,22 +9,21 @@ import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
-import android.widget.Toast;
+import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class BoundedService extends Service implements SensorEventListener {
 
+    private static final String TAG = BoundedService.class.getName();
+
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private final static int DELAY=100;
     private Handler myHandler = new Handler();
-    private double rms;
 
     private LinkedList<Double> listAccX;
     private LinkedList<Double> listAccY;
@@ -50,9 +49,9 @@ public class BoundedService extends Service implements SensorEventListener {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL, DELAY);
 
-        listAccX = new LinkedList<Double>();
-        listAccY = new LinkedList<Double>();
-        listAccZ = new LinkedList<Double>();
+        listAccX = new LinkedList<>();
+        listAccY = new LinkedList<>();
+        listAccZ = new LinkedList<>();
 
         activities = new ArrayList<>();
         currentActivity = new Activity();
@@ -69,13 +68,15 @@ public class BoundedService extends Service implements SensorEventListener {
                             determineActivity();
                         }
                         catch (Exception e) {
-                            System.out.println("Error getting activity");
-                            System.out.println(e.getStackTrace());
+                            Log.e(TAG, "Error getting activity: " + e.getMessage());
+                            e.printStackTrace();
                         }
                     }
                 });
             }
         };
+
+        // Every two minutes determine the current activity
         timer.schedule(doAsynchronousTask, 120000, 120000);
     }
 
@@ -111,7 +112,12 @@ public class BoundedService extends Service implements SensorEventListener {
     }
 
     public synchronized void determineActivity() {
-        currentActivity.setEnd(new Date());
+        Log.d(TAG, "Determining the current activity");
+        // End current activity and start a new one
+        currentActivity.finish();
+
+        Activity finishedActivity = currentActivity;
+        currentActivity = new Activity();
 
         double averageAX = 0;
         double averageAY = 0;
@@ -129,29 +135,22 @@ public class BoundedService extends Service implements SensorEventListener {
 
         double angle = Math.atan2(averageAY, averageAZ)/(Math.PI/180);
 
-
         if(angle < 10) {
-            currentActivity.setType(Activity.Type.SLEEPING);
-            Toast.makeText(this, "Sleeping " + angle, Toast.LENGTH_LONG).show();
+            finishedActivity.setType(Activity.Type.SLEEPING);
         }
-        else {
-            if(averageAX > -.8 || averageAZ < .8) {
-                currentActivity.setType(Activity.Type.SITTING);
-                Toast.makeText(this, "sitting " + angle + " " + averageAX, Toast.LENGTH_LONG);
-            }
-            else {
-                currentActivity.setType(Activity.Type.RUNNING);
-                Toast.makeText(this, "running " + angle + " " + averageAX, Toast.LENGTH_LONG);
-            }
+        else if (averageAX > -.8 || averageAZ < .8) {
+            finishedActivity.setType(Activity.Type.SITTING);
+        } else {
+            finishedActivity.setType(Activity.Type.RUNNING);
         }
 
+        // Reset history of accelerations
         listAccX = new LinkedList<>();
         listAccY = new LinkedList<>();
         listAccZ = new LinkedList<>();
 
-
-        activities.add(currentActivity);
-        currentActivity = new Activity();
+        activities.add(finishedActivity);
+        Log.d(TAG, "Adding current activity of type " + finishedActivity.getTypeString());
     }
 
     private class AcclWork implements Runnable {
@@ -168,10 +167,9 @@ public class BoundedService extends Service implements SensorEventListener {
             double accly = event_.values[1];
             double acclz = event_.values[2];
 
-            listAccX.add((Double) acclx);
-            listAccY.add((Double) accly);
-            listAccZ.add((Double) acclz);
-
+            listAccX.add(acclx);
+            listAccY.add(accly);
+            listAccZ.add(acclz);
         }
     }
 
@@ -183,10 +181,5 @@ public class BoundedService extends Service implements SensorEventListener {
             return BoundedService.this;
         }
     }
-
-    public String msg(){
-        return "Hello World";
-    }
-
 
 }

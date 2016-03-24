@@ -15,8 +15,7 @@ public class Activity implements Comparator<Activity>, Comparable<Activity> {
     private Date start;
     private Date end;
 
-    private final DateFormat shortDateFormat = new SimpleDateFormat("hh:mm:ss");
-    private final DateFormat longDateFormat = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
+    private final DateFormat shortDateFormat = new SimpleDateFormat("kk:mm:ss");
 
     public Activity() {
         this(Type.NONE, new Date(), null);
@@ -52,14 +51,6 @@ public class Activity implements Comparator<Activity>, Comparable<Activity> {
         return shortDateFormat.format(end);
     }
 
-    public String getStartStringLong() {
-        return longDateFormat.format(start);
-    }
-
-    public String getEndStringLong() {
-        return longDateFormat.format(end);
-    }
-
     public String getTimeRangeStringShort() {
         String s;
         if (!isFinished()) {
@@ -70,18 +61,8 @@ public class Activity implements Comparator<Activity>, Comparable<Activity> {
         return s;
     }
 
-    public String getTimeRangeStringLong() {
-        String s;
-        if (!isFinished()) {
-            s = String.format("%s", getStartStringLong());
-        } else {
-            s = String.format("%s - %s", getStartStringLong(), getEndStringLong());
-        }
-        return s;
-    }
-
     public String toString() {
-        return String.format("%s: %s", getTimeRangeStringLong(), getTypeString());
+        return String.format("%s: %s", getTimeRangeStringShort(), getTypeString());
     }
 
     @Override

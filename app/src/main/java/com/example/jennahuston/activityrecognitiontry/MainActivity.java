@@ -4,17 +4,12 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,11 +23,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -43,7 +37,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ArrayList<Activity> activityHistoryList;
     private ListView activityHistoryListView;
     private TextView curActivityText;
-    private Button saveActivityHistoryButton;
     private ActivityAdapter adapter;
 
     @Override
@@ -57,29 +50,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Intent myIntent2 = new Intent(this, BoundedService.class);
         bindService(myIntent2, mConnection, BIND_AUTO_CREATE);
 
-        final Handler handler = new Handler();
         Timer timer = new Timer();
-        TimerTask doAsynchronousTask = new TimerTask() {
-            @Override
-            public void run() {
-                handler.post(new Runnable() {
-                    @SuppressWarnings("unchecked")
-                    public void run() {
-                        try {
-                            setActivityList();
-                        }
-                        catch (Exception e) {
-                            System.out.println("Error getting activities");
-                            System.out.println(e.getStackTrace());
-                        }
-                    }
-                });
-            }
-        };
-        timer.schedule(doAsynchronousTask, 120000, 120000);
-
-        saveActivityHistoryButton = (Button) findViewById(R.id.saveActivityHistoryButton);
-        saveActivityHistoryButton.setOnClickListener(this);
+        GetActivitiesTimerTask doAsynchronousTask = new GetActivitiesTimerTask();
+        timer.schedule(doAsynchronousTask, 125000, 120000);
 
         curActivityText = (TextView) findViewById(R.id.curActivityText);
 
@@ -90,35 +63,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         adapter = new ActivityAdapter(this, activityHistoryList);
 
         activityHistoryListView.setAdapter(adapter);
-
-        // TODO Remove fake activities
-        Date d1 = new GregorianCalendar(2016, 1, 1, 0, 0, 0).getTime();
-        Date d2 = new GregorianCalendar(2016, 1, 1, 0, 2, 0).getTime();
-        Date d3 = new GregorianCalendar(2016, 1, 1, 0, 4, 0).getTime();
-        Date d4 = new GregorianCalendar(2016, 1, 1, 0, 6, 0).getTime();
-        Date d5 = new GregorianCalendar(2016, 1, 1, 0, 8, 0).getTime();
-        Date d6 = new GregorianCalendar(2016, 1, 1, 0, 10, 0).getTime();
-        Activity a1 = new Activity(Activity.Type.SLEEPING, d1, d2);
-        Activity a2 = new Activity(Activity.Type.SITTING, d2, d3);
-        Activity a3 = new Activity(Activity.Type.RUNNING, d3, d4);
-        Activity a4 = new Activity(Activity.Type.SITTING, d4, d5);
-        Activity a5 = new Activity(Activity.Type.SITTING, d5, d6);
-        /*
-        activityHistoryList.add(a1);
-        activityHistoryList.add(a2);
-        activityHistoryList.add(a3);
-        activityHistoryList.add(a4);
-        activityHistoryList.add(a5);
-        */
-        //Collections.sort(activityHistoryList);
-        //adapter.addAll(activityHistoryList);
     }
 
     public void setActivityList(){
-        activityHistoryList = myService.getActivities();
-        Toast.makeText(this, "Changing activity list", Toast.LENGTH_LONG);
-        Collections.sort(activityHistoryList);
-        adapter.notifyDataSetChanged();
+        if (connected) {
+            activityHistoryList.clear();
+            activityHistoryList.addAll(myService.getActivities());
+            Log.d(TAG, "Got activity list (length = " + activityHistoryList.size() + ")");
+
+            if (activityHistoryList.size() > 0) {
+                Activity curActivity = activityHistoryList.get(activityHistoryList.size() - 1);
+                Log.d(TAG, "Setting current activity to " + curActivity.getTypeString());
+                curActivityText.setText(curActivity.getTypeString());
+
+                Collections.sort(activityHistoryList);
+                adapter.notifyDataSetChanged();
+                writeHistoryToFile();
+            } else {
+                Log.w(TAG, "No activities returned");
+            }
+        } else {
+            Log.w(TAG, "Service is not connected");
+        }
     }
 
     @Override
@@ -157,17 +123,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.saveActivityHistoryButton:
-                writeHistoryToFile();
-        }
-    }
-
     public void writeHistoryToFile() {
+        String fileName = new SimpleDateFormat("yyyyMMdd").format(new Date()) + ".txt";
+
         File path = this.getExternalFilesDir(null);
-        File file = new File(path, new SimpleDateFormat("yyyyMMddhhmmss").format(new Date()) + ".txt");
+        File file = new File(path, fileName);
 
         Log.d(TAG, "Attempting to write to " + file.getAbsolutePath());
 
@@ -181,7 +141,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             writer.close();
             f.close();
 
-            Toast.makeText(this, "History saved in " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
             Log.d(TAG, "Successfully wrote history to " + file.getAbsolutePath());
         } catch (FileNotFoundException e) {
             Log.e(TAG, e.getMessage());
@@ -189,6 +148,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (IOException e) {
             Log.e(TAG, e.getMessage());
             Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private class GetActivitiesTimerTask extends TimerTask {
+
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        setActivityList();
+                    }
+                    catch (Exception e) {
+                        Log.e(TAG, "Error getting activities: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
     }
 }

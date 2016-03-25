@@ -135,10 +135,10 @@ public class BoundedService extends Service implements SensorEventListener {
 
         double angle = Math.atan2(averageAY, averageAZ)/(Math.PI/180);
 
-        if(angle < 10) {
+        if(angle < 10 && angle > -10) {
             finishedActivity.setType(Activity.Type.SLEEPING);
         }
-        else if (averageAX > -.8 || averageAZ < .8) {
+        else if (averageAX > -.8 && averageAZ < .8) {
             finishedActivity.setType(Activity.Type.SITTING);
         } else {
             finishedActivity.setType(Activity.Type.RUNNING);

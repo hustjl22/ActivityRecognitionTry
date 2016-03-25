@@ -54,7 +54,6 @@ public class BoundedService extends Service implements SensorEventListener {
         listAccZ = new LinkedList<>();
 
         activities = new ArrayList<>();
-        currentActivity = new Activity();
 
         final Handler handler = new Handler();
         Timer timer = new Timer();
@@ -76,6 +75,7 @@ public class BoundedService extends Service implements SensorEventListener {
             }
         };
 
+        currentActivity = new Activity();
         // Every two minutes determine the current activity
         timer.schedule(doAsynchronousTask, 120000, 120000);
     }

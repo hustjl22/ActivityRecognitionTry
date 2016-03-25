@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">ActivityRecognitionTry</string>
+    <string name="app_name">Activity Recognition</string>
     <string name="action_settings">Settings</string>
-    <string name="curActivityLabel">Current Activity:</string>
+    <string name="curActivityLabel">Previous Activity:</string>
     <string name="curActivityPlaceholder">waiting...</string>
     <string name="contentHeader">Activity History</string>
     <string name="timeRangePlaceholder">00:00:00</string>
